@@ -8,7 +8,6 @@ library ValidationLogic {
   using SafeMath for uint256;
 
   function withdrawValidation(
-    address _pool,
     uint256 _amount,
     address _asset,
     address _oracle,
