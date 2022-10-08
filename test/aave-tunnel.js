@@ -11,6 +11,7 @@ describe("Aave Tunnel", async () => {
   beforeEach(async () => {
     [deployer, user] = await ethers.getSigners();
 
+    // deploying the library contract
     const libFactory = await ethers.getContractFactory("ValidationLogic");
     const lib = await libFactory.deploy();
     await lib.deployed();
