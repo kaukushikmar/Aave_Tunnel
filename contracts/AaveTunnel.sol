@@ -9,13 +9,15 @@ import { IAToken } from "./interfaces/IAToken.sol";
 import { IPriceOracle } from "./interfaces/IPriceOracle.sol";
 import { ValidationLogic } from "./logic/ValidationLogic.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import { Error } from "./helper/Error.sol";
 
 contract AaveTunnel {
   using SafeMath for uint256;
 
   /** State Variable */
   uint256 _check = 1; // reentrancy check
-  mapping(address => mapping(address => uint256)) AmountSupplied;
+  mapping(address => uint256) AmountSupplied;
+  mapping(address => uint256) AmountBorrowed;
 
   ILendingPool immutable lendingPool;
   IAToken immutable aTokens;
@@ -49,43 +51,42 @@ contract AaveTunnel {
     lendingPool.deposit(_asset, _amount, address(this), 0);
 
     uint256 finalPoolBalance = aTokens.balanceOf(address(this));
-    AmountSupplied[msg.sender][_asset] += finalPoolBalance - initialPoolBalance;
+    AmountSupplied[msg.sender] += finalPoolBalance - initialPoolBalance;
   }
 
-  function supplyEth() external payable {
-    require(msg.value > 0, "Not suppliet eth");
-    weth.deposit{ value: msg.value }();
+  // function supplyEth() external payable {
+  //   require(msg.value > 0, "Not suppliet eth");
+  //   weth.deposit{ value: msg.value }();
 
-    uint256 initialPoolBalance = aTokens.balanceOf(address(this));
+  //   uint256 initialPoolBalance = aTokens.balanceOf(address(this));
 
-    require(weth.transfer(address(lendingPool), msg.value));
+  //   require(weth.transfer(address(lendingPool), msg.value));
 
-    uint256 finalPoolBalance = aTokens.balanceOf(address(this));
-    AmountSupplied[msg.sender][address(weth)] +=
-      finalPoolBalance -
-      initialPoolBalance;
-  }
+  //   uint256 finalPoolBalance = aTokens.balanceOf(address(this));
+  //   AmountSupplied[msg.sender] += finalPoolBalance - initialPoolBalance;
+  // }
 
   function withdraw(address _asset, uint256 _amount) external noRentry {
-    require(
-      AmountSupplied[msg.sender][_asset] >= _amount,
-      "Not enough to withdraw"
-    );
+    require(AmountSupplied[msg.sender] >= _amount, "Not enough to withdraw");
 
     (uint256 _totalCollateral, uint256 _totalDebt, , , , ) = lendingPool
       .getUserAccountData(address(this));
 
-    // very primitive withdraw validate
+    // very primitive withdraw validate logic
     require(
       ValidationLogic.withdrawValidation(
-        address(this),
         _amount,
         _asset,
+        AmountSupplied[msg.sender],
+        AmountBorrowed[msg.sender],
         address(priceOracle),
         _totalCollateral,
         _totalDebt
-      )
+      ),
+      Error.WITHDRAW_NOT_ALLOWED
     );
+
+    uint256 initialPoolBalance = aTokens.balanceOf(address(this));
 
     uint256 withdrawAmount = lendingPool.withdraw(
       _asset,
@@ -93,26 +94,25 @@ contract AaveTunnel {
       address(this)
     );
 
-    AmountSupplied[msg.sender][_asset] -= withdrawAmount;
+    uint256 finalPoolBalance = aTokens.balanceOf(address(this));
+
+    AmountSupplied[msg.sender] += finalPoolBalance - initialPoolBalance;
     require(IERC20(_asset).transfer(msg.sender, withdrawAmount));
   }
 
-  /** @dev Function to withdraw eth by user if he/she has supplied eth/weth */
-  function withdrawEth(uint256 _amount) external noRentry {
-    address _asset = address(weth);
-    require(
-      AmountSupplied[msg.sender][_asset] >= _amount,
-      "Not enough to withdraw"
-    );
-    uint256 withdrawAmount = lendingPool.withdraw(
-      _asset,
-      _amount,
-      address(this)
-    );
+  // /** @dev Function to withdraw eth by user if he/she has supplied eth/weth */
+  // function withdrawEth(uint256 _amount) external noRentry {
+  //   address _asset = address(weth);
+  //   require(AmountSupplied[msg.sender] >= _amount, "Not enough to withdraw");
+  //   uint256 withdrawAmount = lendingPool.withdraw(
+  //     _asset,
+  //     _amount,
+  //     address(this)
+  //   );
 
-    AmountSupplied[msg.sender][_asset] -= withdrawAmount;
-    require(weth.transfer(msg.sender, withdrawAmount));
-  }
+  //   AmountSupplied[msg.sender] -= withdrawAmount;
+  //   require(weth.transfer(msg.sender, withdrawAmount));
+  // }
 
   /** @dev user can only borrow if and only if he has supplied in this asset */
   function borrow(
