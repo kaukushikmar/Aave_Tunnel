@@ -10,7 +10,9 @@ import { IPriceOracle } from "./interfaces/IPriceOracle.sol";
 import { ValidationLogic } from "./logic/ValidationLogic.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import { Error } from "./helper/Error.sol";
+import "hardhat/console.sol";
 
+/** @notice user can only supply weth and borrow weth */
 contract AaveTunnel {
   using SafeMath for uint256;
 
@@ -40,18 +42,23 @@ contract AaveTunnel {
     IERC20 token = IERC20(_asset);
 
     require(token.balanceOf(msg.sender) >= _amount, "Insufficient balance");
+    console.log("Passed the insufficient balance check");
     require(
       token.transferFrom(msg.sender, address(this), _amount),
       "Transfer failed"
     );
 
     uint256 initialPoolBalance = aTokens.balanceOf(address(this));
+    console.log(initialPoolBalance);
 
     token.approve(address(lendingPool), _amount);
     lendingPool.deposit(_asset, _amount, address(this), 0);
 
     uint256 finalPoolBalance = aTokens.balanceOf(address(this));
-    AmountSupplied[msg.sender] += finalPoolBalance - initialPoolBalance;
+    console.log(finalPoolBalance);
+    AmountSupplied[msg.sender] = AmountSupplied[msg.sender].add(
+      finalPoolBalance.sub(initialPoolBalance)
+    );
   }
 
   // function supplyEth() external payable {
@@ -67,10 +74,7 @@ contract AaveTunnel {
   // }
 
   function withdraw(address _asset, uint256 _amount) external noRentry {
-    require(AmountSupplied[msg.sender] >= _amount, "Not enough to withdraw");
-
-    (uint256 _totalCollateral, uint256 _totalDebt, , , , ) = lendingPool
-      .getUserAccountData(address(this));
+    require(AmountSupplied[msg.sender] >= _amount, Error.WITHDRAW_NOT_ALLOWED);
 
     // very primitive withdraw validate logic
     require(
@@ -79,9 +83,7 @@ contract AaveTunnel {
         _asset,
         AmountSupplied[msg.sender],
         AmountBorrowed[msg.sender],
-        address(priceOracle),
-        _totalCollateral,
-        _totalDebt
+        address(priceOracle)
       ),
       Error.WITHDRAW_NOT_ALLOWED
     );
@@ -120,14 +122,13 @@ contract AaveTunnel {
     uint256 _amount,
     uint256 _mode
   ) external noRentry {
-    (, , uint256 availableBorrows, , , ) = lendingPool.getUserAccountData(
-      address(this)
+    require(
+      ValidationLogic.borrowValidation(
+        _amount,
+        AmountSupplied[msg.sender],
+        AmountBorrowed[msg.sender]
+      )
     );
-
-    uint256 price = priceOracle.getAssetPrice(_asset);
-    uint256 priceInEth = (price.mul(_amount)).div((10**18));
-
-    require(availableBorrows >= priceInEth, "Can't borrow");
 
     lendingPool.borrow(_asset, _amount, _mode, 0, address(this));
     require(IERC20(_asset).transfer(msg.sender, _amount));
@@ -156,5 +157,10 @@ contract AaveTunnel {
     _check = 2;
     _;
     _check = 1;
+  }
+
+  /** view functions */
+  function getSuppliedAmount(address _user) external view returns (uint256) {
+    return AmountSupplied[_user];
   }
 }

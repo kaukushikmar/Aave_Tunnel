@@ -15,9 +15,7 @@ library ValidationLogic {
     address _asset,
     uint256 _userBalanceSupplied,
     uint256 _userBalanceBorrowed,
-    address _oracle,
-    uint256 _totalCollateral,
-    uint256 _totalDebt
+    address _oracle
   ) external view returns (bool) {
     require(_amount != 0, Error.INVALID_AMOUNT);
     require(_amount <= _userBalanceSupplied, Error.NOT_ENOUGH_MONEY);
@@ -40,5 +38,16 @@ library ValidationLogic {
       (healthFactorAfterWithdraw >=
         ValidationLogic.HEALTH_FACTOR_LIQUIDATION_THRESHOLD)
     );
+  }
+
+  function borrowValidation(
+    uint256 _amount,
+    uint256 _userBalanceSupplied,
+    uint256 _userBalanceBorrowed
+  ) external view returns (bool) {
+    uint256 borrowTotalAfter = _userBalanceBorrowed.add(_amount);
+    uint256 collateralNeeded = borrowTotalAfter.mul(2);
+
+    return (_userBalanceSupplied >= collateralNeeded);
   }
 }
