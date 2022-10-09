@@ -75,4 +75,11 @@ describe("Aave Tunnel", async () => {
       ethers.utils.parseEther("5").toString()
     );
   });
+
+  it.only("Should not be able to withdraw money", async () => {
+    console.log("withdrawing asset");
+    await expect(
+      aave.connect(user).withdraw(wEthAddress, ethers.utils.parseEther("5"))
+    ).to.be.reverted;
+  });
 });
