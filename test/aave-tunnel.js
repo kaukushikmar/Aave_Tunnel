@@ -76,7 +76,7 @@ describe("Aave Tunnel", async () => {
     );
   });
 
-  it.only("Should not be able to withdraw money", async () => {
+  it("Should not be able to withdraw money", async () => {
     console.log("withdrawing asset");
     await expect(
       aave.connect(user).withdraw(wEthAddress, ethers.utils.parseEther("5"))
