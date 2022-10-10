@@ -73,34 +73,34 @@ contract AaveTunnel {
   //   AmountSupplied[msg.sender] += finalPoolBalance - initialPoolBalance;
   // }
 
-  function withdraw(address _asset, uint256 _amount) external noRentry {
-    require(AmountSupplied[msg.sender] >= _amount, Error.WITHDRAW_NOT_ALLOWED);
+  // function withdraw(address _asset, uint256 _amount) external noRentry {
+  //   require(AmountSupplied[msg.sender] >= _amount, Error.WITHDRAW_NOT_ALLOWED);
 
-    // very primitive withdraw validate logic
-    require(
-      ValidationLogic.withdrawValidation(
-        _amount,
-        _asset,
-        AmountSupplied[msg.sender],
-        AmountBorrowed[msg.sender],
-        address(priceOracle)
-      ),
-      Error.WITHDRAW_NOT_ALLOWED
-    );
+  //   // very primitive withdraw validate logic
+  //   require(
+  //     ValidationLogic.withdrawValidation(
+  //       _amount,
+  //       _asset,
+  //       AmountSupplied[msg.sender],
+  //       AmountBorrowed[msg.sender],
+  //       address(priceOracle)
+  //     ),
+  //     Error.WITHDRAW_NOT_ALLOWED
+  //   );
 
-    uint256 initialPoolBalance = aTokens.balanceOf(address(this));
+  //   uint256 initialPoolBalance = aTokens.balanceOf(address(this));
 
-    uint256 withdrawAmount = lendingPool.withdraw(
-      _asset,
-      _amount,
-      address(this)
-    );
+  //   uint256 withdrawAmount = lendingPool.withdraw(
+  //     _asset,
+  //     _amount,
+  //     address(this)
+  //   );
 
-    uint256 finalPoolBalance = aTokens.balanceOf(address(this));
+  //   uint256 finalPoolBalance = aTokens.balanceOf(address(this));
 
-    AmountSupplied[msg.sender] += finalPoolBalance - initialPoolBalance;
-    require(IERC20(_asset).transfer(msg.sender, withdrawAmount));
-  }
+  //   AmountSupplied[msg.sender] += finalPoolBalance - initialPoolBalance;
+  //   require(IERC20(_asset).transfer(msg.sender, withdrawAmount));
+  // }
 
   // /** @dev Function to withdraw eth by user if he/she has supplied eth/weth */
   // function withdrawEth(uint256 _amount) external noRentry {
@@ -117,39 +117,39 @@ contract AaveTunnel {
   // }
 
   /** @dev user can only borrow if and only if he has supplied in this asset */
-  function borrow(
-    address _asset,
-    uint256 _amount,
-    uint256 _mode
-  ) external noRentry {
-    require(
-      ValidationLogic.borrowValidation(
-        _amount,
-        AmountSupplied[msg.sender],
-        AmountBorrowed[msg.sender]
-      )
-    );
+  // function borrow(
+  //   address _asset,
+  //   uint256 _amount,
+  //   uint256 _mode
+  // ) external noRentry {
+  //   require(
+  //     ValidationLogic.borrowValidation(
+  //       _amount,
+  //       AmountSupplied[msg.sender],
+  //       AmountBorrowed[msg.sender]
+  //     )
+  //   );
 
-    lendingPool.borrow(_asset, _amount, _mode, 0, address(this));
-    require(IERC20(_asset).transfer(msg.sender, _amount));
-  }
+  //   lendingPool.borrow(_asset, _amount, _mode, 0, address(this));
+  //   require(IERC20(_asset).transfer(msg.sender, _amount));
+  // }
 
-  function repay(
-    address _asset,
-    uint256 _amount,
-    uint256 _mode
-  ) external {
-    // not checking if he repays more than total borrow after accrual
-    IERC20 token = IERC20(_asset);
-    require(token.transferFrom(msg.sender, address(this), _amount));
+  // function repay(
+  //   address _asset,
+  //   uint256 _amount,
+  //   uint256 _mode
+  // ) external {
+  //   // not checking if he repays more than total borrow after accrual
+  //   IERC20 token = IERC20(_asset);
+  //   require(token.transferFrom(msg.sender, address(this), _amount));
 
-    token.approve(address(lendingPool), _amount);
+  //   token.approve(address(lendingPool), _amount);
 
-    uint256 repaid = lendingPool.repay(_asset, _amount, _mode, address(this));
-    require(repaid == _amount);
-  }
+  //   uint256 repaid = lendingPool.repay(_asset, _amount, _mode, address(this));
+  //   require(repaid == _amount);
+  // }
 
-  receive() external payable {}
+  // receive() external payable {}
 
   /** modifier */
   modifier noRentry() {
@@ -160,7 +160,7 @@ contract AaveTunnel {
   }
 
   /** view functions */
-  function getSuppliedAmount(address _user) external view returns (uint256) {
-    return AmountSupplied[_user];
-  }
+  // function getSuppliedAmount(address _user) external view returns (uint256) {
+  //   return AmountSupplied[_user];
+  // }
 }
